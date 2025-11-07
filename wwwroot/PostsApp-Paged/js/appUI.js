@@ -252,9 +252,21 @@ function renderpostForm(post = null) {
     $("#postForm").empty();
     $("#postForm").append(`
         <form class="form" id="postForm">
-            <a href="${post.Url}" target="_blank" id="faviconLink" class="big-favicon" > ${favicon} </a>
-            <br>
+           
+            
             <input type="hidden" name="Id" value="${post.Id}"/>
+
+            <label for="Category" class="form-label">Categorie </label>
+            <input 
+                class="form-control Alpha"
+                name="Category" 
+                id="Category" 
+                placeholder="Catégorie"
+                required
+                RequireMessage="Veuillez entrer un titre"
+                InvalidMessage="Le titre comporte un caractère illégal"
+                value="${post.Category}"
+            />
 
             <label for="Title" class="form-label">Titre </label>
             <input 
@@ -267,24 +279,24 @@ function renderpostForm(post = null) {
                 InvalidMessage="Le titre comporte un caractère illégal"
                 value="${post.Title}"
             />
-            <label for="Url" class="form-label">Url </label>
-            <input
-                class="form-control URL"
-                name="Url"
-                id="Url"
-                placeholder="Url"
-                required
-                value="${post.Url}" 
-            />
-            <label for="Category" class="form-label">Catégorie </label>
+
+            <label for="Text" class="form-label">Texte </label>
+                <textarea
+                    class="form-control Text"
+                    name="Text"
+                    id="Text"
+                    placeholder="Text"
+                    required>${post.Text}
+            </textarea>
+
+            <label for="Image" class="form-label">Image </label>
             <input 
-                class="form-control"
-                name="Category"
-                id="Category"
-                placeholder="Catégorie"
-                required
-                value="${post.Category}"
-            />
+                class="form-control imagePreview"
+                style="background-image:url('${post.Image}')"
+                name="Image"
+                id="Image"
+                value = "${post.Image}"
+                />
             <br>
             <input type="submit" value="Enregistrer" id="savepost" class="btn btn-primary">
             <input type="button" value="Annuler" id="cancel" class="btn btn-secondary">
