@@ -318,10 +318,10 @@ function makeFavicon(url, big = false) {
     // Utiliser l'API de google pour extraire le favicon du site pointé par url
     // retourne un élément div comportant le favicon en tant qu'image de fond
     ///////////////////////////////////////////////////////////////////////////
-    if (url.slice(-1) != "/") url += "/";
+    /*if (url.slice(-1) != "/") url += "/";*/
     let faviconClass = "favicon";
     if (big) faviconClass = "big-favicon";
-    url = "http://www.google.com/s2/favicons?sz=64&domain=" + url;
+    url = "http://www.google.com/s2/favicons?sz=64&domain=" + url;5
     return `<div class="${faviconClass}" style="background-image: url('${url}');"></div>`;
 }
 function renderpost(post) {
@@ -331,16 +331,37 @@ function renderpost(post) {
         <div class="postContainer noselect">
             <div class="postLayout">
                 <div class="post">
-                    <a href="${post.Url}" target="_blank"> ${favicon} </a>
-                    <span class="postTitle">${post.Title}</span>
+                <div class="postCommandPanel">
+                    <div>
+                        <div class="postCategory">${post.Category}</div>
+                    </div>
+                    <div class="rightItems">
+                        <span class="editCmd cmdIcon fa fa-pencil" editpostId="${post.Id}" title="Modifier ${post.Title}"></span>
+                        <span class="deleteCmd cmdIcon fa fa-trash" deletepostId="${post.Id}" title="Effacer ${post.Title}"></span>
+                    </div>
                 </div>
-                <span class="postCategory">${post.Category}</span>
+                    <div class="postTitle">${post.Title}</div>
+
+                    <div class="imagePreview" style="background-image:url('${post.Image}')"></div>
+       
+                     <div class="postText hideExtra">${post.Text}</div>
+                    <div class="toggleText" style="text-align:center">
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </div>
+                </div>
+                
             </div>
-            <div class="postCommandPanel">
-                <span class="editCmd cmdIcon fa fa-pencil" editpostId="${post.Id}" title="Modifier ${post.Title}"></span>
-                <span class="deleteCmd cmdIcon fa fa-trash" deletepostId="${post.Id}" title="Effacer ${post.Title}"></span>
-            </div>
+            
         </div>
     </div>           
     `);
 }
+$(document).on('click', '.toggleText', function() {
+    let postRow = $(this).closest('.postRow');
+    let textDiv = postRow.find('.postText');
+
+    textDiv.toggleClass('hideExtra showExtra');
+
+    let icon = $(this).find('i');
+    icon.toggleClass('fa-chevron-down fa-chevron-up');
+});

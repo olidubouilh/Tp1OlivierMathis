@@ -1,6 +1,6 @@
 import Model from './model.js';
 
-export default class Bookmark extends Model {
+export default class Post extends Model {
     constructor() {
         super(false /* secured Id */);
 
