@@ -83,3 +83,10 @@ white-space: normal;
   overflow: auto; /* vertical scrollbar appears if content exceeds height */
   resize: vertical; /* optional: allow user to resize vertically */
 }
+.imageUploader {
+ height:auto; 
+ max-height:400px; 
+ width: auto; 
+ max-width:550px; 
+ border-radius:4px;
+}

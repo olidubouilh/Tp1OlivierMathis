@@ -180,6 +180,8 @@ async function renderDeletepostForm(id) {
     if (!posts_API.error) {
         let post = response.data;
         let favicon = makeFavicon(post.Url);
+        let creationDate = convertToFrenchDate(post.Creation);
+        
         if (post !== null) {
             $("#postForm").append(`
             <div class="postdeleteForm">
@@ -189,10 +191,12 @@ async function renderDeletepostForm(id) {
                     <div class="postContainer noselect">
                         <div class="postLayout">
                             <div class="post">
-                                <a href="${post.Url}" target="_blank"> ${favicon} </a>
-                                <span class="postTitle">${post.Title}</span>
+                                <div class="postTitle">${post.Title}</div>
+                                <span class="postCategory">${post.Category}</span>
+                                <div style="font-size: 0.85rem; color: #666; margin-top: 8px;">
+                                    Créé le: ${creationDate}
+                                </div>
                             </div>
-                            <span class="postCategory">${post.Category}</span>
                         </div>
                      </div>
                 </div>   
@@ -235,36 +239,36 @@ function newpost() {
     post = {};
     post.Id = 0;
     post.Title = "";
-    post.Url = "";
+    post.Text = "";
     post.Category = "";
+    post.Image = "../assetsRepository/298049b0-bcf8-11f0-bc04-8f35b8e29f0f.png";
+    post.Creation = Math.floor(Date.now() / 1000);
     return post;
 }
 function renderpostForm(post = null) {
     hideposts();
     let create = post == null;
-    let favicon = `<div class="big-favicon"></div>`;
     if (create)
         post = newpost();
-    else
-        favicon = makeFavicon(post.Url, true);
+    
     $("#actionTitle").text(create ? "Création" : "Modification");
     $("#postForm").show();
     $("#postForm").empty();
-    $("#postForm").append(`
-        <form class="form" id="postForm">
-           
-            
-            <input type="hidden" name="Id" value="${post.Id}"/>
+   $("#postForm").append(`
+    <form class="form" id="postFormElement">
+        
+        <input type="hidden" name="Id" value="${post.Id}"/>
+        <input type="hidden" name="Creation" value="${post.Creation || Date.now()}"/>
 
-            <label for="Category" class="form-label">Categorie </label>
+        <label for="Category" class="form-label">Categorie </label>
             <input 
                 class="form-control Alpha"
                 name="Category" 
                 id="Category" 
                 placeholder="Catégorie"
                 required
-                RequireMessage="Veuillez entrer un titre"
-                InvalidMessage="Le titre comporte un caractère illégal"
+                RequireMessage="Veuillez entrer une catégorie"
+                InvalidMessage="La catégorie comporte un caractère illégal"
                 value="${post.Category}"
             />
 
@@ -281,47 +285,50 @@ function renderpostForm(post = null) {
             />
 
             <label for="Text" class="form-label">Texte </label>
-                <textarea
-                    class="form-control Text"
-                    name="Text"
-                    id="Text"
-                    placeholder="Text"
-                    required>${post.Text}
-            </textarea>
+            <textarea
+                class="form-control Text"
+                name="Text"
+                id="Text"
+                placeholder="Text"
+                required>${post.Text}</textarea>
 
-            <label for="Image" class="form-label">Image </label>
-            <input 
-                class="form-control imagePreview"
-                style="background-image:url('${post.Image}')"
-                name="Image"
-                id="Image"
-                value = "${post.Image}"
-                />
-            <br>
+            <!-- nécessite le fichier javascript 'imageControl.js' -->
+            <label class="form-label">Image </label>
+            <div class='imageUploader' 
+                 newImage='${create}' 
+                 controlId='Image' 
+                 imageSrc='${post.Image}' 
+                 waitingImage="Loading_icon.gif">
+            </div>
+            <hr>
             <input type="submit" value="Enregistrer" id="savepost" class="btn btn-primary">
             <input type="button" value="Annuler" id="cancel" class="btn btn-secondary">
         </form>
     `);
+    
+    initImageUploaders();
     initFormValidation();
-    $("#Url").on("change", function () {
-        let favicon = makeFavicon($("#Url").val(), true);
-        $("#faviconLink").empty();
-        $("#faviconLink").attr("href", $("#Url").val());
-        $("#faviconLink").append(favicon);
-    })
-    $('#postForm').on("submit", async function (event) {
+    
+    $('#postFormElement').on("submit", async function (event) {
         event.preventDefault();
-        let post = getFormData($("#postForm"));
-        post = await posts_API.Save(post, create);
-        if (!posts_API.error) {
+        let postData = getFormData($(this));
+        
+        // Vérifiez ce que vous envoyez
+        console.log("Données envoyées:", postData);
+        
+        addWaitingGif();
+        let result = await posts_API.Save(postData, create);
+        
+        if (result) {
             showposts();
             await pageManager.update();
-            compileCategories();
-            pageManager.scrollToElem(post.Id);
+        } else {
+            console.log("Erreur:", posts_API.currentHttpError);
+            renderError("Une erreur est survenue! " + posts_API.currentHttpError);
         }
-        else
-            renderError("Une erreur est survenue!");
+        removeWaitingGif();
     });
+    
     $('#cancel').on("click", function () {
         showposts();
     });
@@ -338,32 +345,37 @@ function makeFavicon(url, big = false) {
 }
 function renderpost(post) {
     let favicon = makeFavicon(post.Url);
+    let creationDate = convertToFrenchDate(post.Creation);
+    
     return $(`
      <div class="postRow" id='${post.Id}'>
         <div class="postContainer noselect">
             <div class="postLayout">
                 <div class="post">
-                <div class="postCommandPanel">
-                    <div>
-                        <div class="postCategory">${post.Category}</div>
+                    <div class="postCommandPanel">
+                        <div>
+                            <div class="postCategory">${post.Category}</div>
+                        </div>
+                        <div class="rightItems">
+                            <span class="editCmd cmdIcon fa fa-pencil" editpostId="${post.Id}" title="Modifier ${post.Title}"></span>
+                            <span class="deleteCmd cmdIcon fa fa-trash" deletepostId="${post.Id}" title="Effacer ${post.Title}"></span>
+                        </div>
                     </div>
-                    <div class="rightItems">
-                        <span class="editCmd cmdIcon fa fa-pencil" editpostId="${post.Id}" title="Modifier ${post.Title}"></span>
-                        <span class="deleteCmd cmdIcon fa fa-trash" deletepostId="${post.Id}" title="Effacer ${post.Title}"></span>
-                    </div>
-                </div>
                     <div class="postTitle">${post.Title}</div>
 
                     <div class="imagePreview" style="background-image:url('${post.Image}')"></div>
        
-                     <div class="postText hideExtra">${post.Text}</div>
+                    <div class="postText hideExtra">${post.Text}</div>
+                    
+                    <div class="postDate" style="font-size: 0.85rem; color: #666; margin-top: 8px; font-style: italic;">
+                        ${creationDate}
+                    </div>
+                    
                     <div class="toggleText" style="text-align:center">
                         <i class="fa-solid fa-chevron-down"></i>
                     </div>
                 </div>
-                
             </div>
-            
         </div>
     </div>           
     `);
@@ -377,3 +389,53 @@ $(document).on('click', '.toggleText', function() {
     let icon = $(this).find('i');
     icon.toggleClass('fa-chevron-down fa-chevron-up');
 });
+function convertToFrenchDate(numeric_date) {
+    let timestamp = numeric_date < 10000000000 ? numeric_date * 1000 : numeric_date;
+    let date = new Date(timestamp);
+    var options = { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        timeZone: 'America/New_York'
+    };
+    var opt_weekday = { 
+        weekday: 'long',
+        timeZone: 'America/New_York'
+    };
+    var timeOptions = {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZone: 'America/New_York',
+        hour12: false
+    };
+    
+    var weekday = toTitleCase(date.toLocaleDateString("fr-FR", opt_weekday));
+    
+    function toTitleCase(str) {
+        return str.replace(
+            /\w\S*/g,
+            function (txt) {
+                return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+            }
+        );
+    }
+    
+    return weekday + " le " + date.toLocaleDateString("fr-FR", options) + " à " + date.toLocaleTimeString("fr-FR", timeOptions);
+}
+
+function UTC_To_Local(UTC_numeric_date) {
+    let UTC_Offset = new Date().getTimezoneOffset() / 60;
+    let UTC_Date = new Date(UTC_numeric_date);
+    UTC_Date.setHours(UTC_Date.getHours() - UTC_Offset);
+    let Local_numeric_date = UTC_Date.getTime();
+    return Local_numeric_date;
+}
+
+function Local_to_UTC(Local_numeric_date) {
+    let UTC_Offset = new Date().getTimezoneOffset() / 60;
+    let Local_Date = new Date(Local_numeric_date);
+    Local_Date.setHours(Local_Date.getHours() + UTC_Offset);
+    let UTC_numeric_date = Local_Date.getTime();
+    return UTC_numeric_date;
+}
