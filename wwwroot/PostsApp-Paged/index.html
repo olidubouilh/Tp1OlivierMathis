@@ -20,6 +20,7 @@
         <div id="header">
             <img src="news-logo.png" class="appLogo" alt="" title="Gestionnaire de nouvelles">
             <h4 id="actionTitle">Liste des nouvelles</h4>
+            <i class="cmdIcon fa-solid fa-magnifying-glass" id="searchCmd" title="Rechercher"></i>
             <i class="cmdIcon fa fa-plus" id="createpost" title="Ajouter une Nouvelle"></i>
             <i class="cmdIcon fa fa-times" id="abort" title="Annuler"></i>
             <div class="dropdown ms-auto" id="categoriesMenu">
@@ -32,6 +33,13 @@
                     </div>
                 </div>
             </div>
+        </div>
+        <div id="searchBar" style="display: none;">
+            <input type="text" 
+                id="searchKeys" 
+                class="form-control" 
+                placeholder="Rechercher dans les titres et textes...">
+            <i class="fa fa-times" id="closeSearchCmd" title="Fermer la recherche"></i>
         </div>
         <div id="content">
             <div id="scrollPanel">

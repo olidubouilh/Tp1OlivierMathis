@@ -1,9 +1,11 @@
 const periodicRefreshPeriod = 10;
+const minKeywordLength = 1;
 let categories = [];
 let selectedCategory = "";
 let pageManager;
 let itemLayout;
-
+let searchKeys = "";
+let showKeywords = true;
 let waiting = null;
 let waitingGifTrigger = 2000;
 
@@ -33,6 +35,20 @@ async function Init_UI() {
     $('#aboutCmd').on("click", function () {
         renderAbout();
     });
+    $('#searchCmd').on("click", function () {
+        showSearchBar();
+    });
+    $('#closeSearchCmd').on("click", function () {
+        hideSearchBar();
+    });
+    let searchTimeout;
+    $('#searchKeys').on("input", function () {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(async () => {
+            eraseHighlights();
+            await pageManager.reset();
+        },500);
+    });
     showposts();
 
     posts_API.start_Periodic_Refresh(async () => { await pageManager.update(); });
@@ -44,17 +60,19 @@ function showposts() {
     $('#postForm').hide();
     $('#aboutContainer').hide();
     $("#createpost").show();
-    $('#categoriesMenu').show()
+    $('#searchCmd').show();
+    $('#categoriesMenu').show();
     posts_API.resume_Periodic_Refresh();
 }
 function hideposts() {
     $("#scrollPanel").hide();
     $("#createpost").hide();
+    $('#searchCmd').hide();
     $('#categoriesMenu').hide();
+    $("#searchBar").hide();
     $("#abort").show();
     posts_API.stop_Periodic_Refresh();
 }
-
 function renderAbout() {
     hideposts();
     $("#actionTitle").text("À propos...");
@@ -118,16 +136,30 @@ async function renderposts(container, queryString) {
     deleteError();
     let endOfData = false;
     queryString += "&sort=category,title";
-    if (selectedCategory != "") queryString += "&category=" + selectedCategory;
+    if (selectedCategory != "")
+        queryString += "&category=" + selectedCategory;
+    
     addWaitingGif();
     compileCategories();
+
+    searchKeys = $("#searchKeys").val().trim();
+    
     let response = await posts_API.Get(queryString);
     if (!posts_API.error) {
         let posts = response.data;
+        if (searchKeys !== "") {
+            posts = filterPostsByKeywords(posts, searchKeys);
+        }
+        
         if (posts.length > 0) {
             posts.forEach(post => {
                 container.append(renderpost(post));
             });
+            
+            if (searchKeys !== "") {
+                highlightKeywords();
+            }
+            
             $(".editCmd").off();
             $(".editCmd").on("click", function () {
                 renderEditpostForm($(this).attr("editpostId"));
@@ -136,15 +168,24 @@ async function renderposts(container, queryString) {
             $(".deleteCmd").on("click", function () {
                 renderDeletepostForm($(this).attr("deletepostId"));
             });
-        } else
+        } else {
             endOfData = true;
+            // Afficher un message si aucun résultat
+            if (searchKeys !== "") {
+                container.append($(`
+                    <div style="text-align: center; padding: 40px; color: #666;">
+                        <i class="fa fa-search" style="font-size: 3rem; margin-bottom: 20px;"></i>
+                        <p style="font-size: 1.2rem;">Aucun résultat trouvé pour "${searchKeys}"</p>
+                    </div>
+                `));
+            }
+        }
     } else {
         renderError(posts_API.currentHttpError);
     }
     removeWaitingGif();
     return endOfData;
 }
-
 function renderError(message) {
     hideposts();
     $("#actionTitle").text("Erreur du serveur...");
@@ -179,7 +220,6 @@ async function renderDeletepostForm(id) {
     let response = await posts_API.Get(id)
     if (!posts_API.error) {
         let post = response.data;
-        let favicon = makeFavicon(post.Url);
         let creationDate = convertToFrenchDate(post.Creation);
         
         if (post !== null) {
@@ -241,7 +281,7 @@ function newpost() {
     post.Title = "";
     post.Text = "";
     post.Category = "";
-    post.Image = "../assetsRepository/298049b0-bcf8-11f0-bc04-8f35b8e29f0f.png";
+    post.Image = "";
     post.Creation = Math.floor(Date.now() / 1000);
     return post;
 }
@@ -254,7 +294,7 @@ function renderpostForm(post = null) {
     $("#actionTitle").text(create ? "Création" : "Modification");
     $("#postForm").show();
     $("#postForm").empty();
-   $("#postForm").append(`
+    $("#postForm").append(`
     <form class="form" id="postFormElement">
         
         <input type="hidden" name="Id" value="${post.Id}"/>
@@ -313,9 +353,6 @@ function renderpostForm(post = null) {
         event.preventDefault();
         let postData = getFormData($(this));
         
-        // Vérifiez ce que vous envoyez
-        console.log("Données envoyées:", postData);
-        
         addWaitingGif();
         let result = await posts_API.Save(postData, create);
         
@@ -333,20 +370,8 @@ function renderpostForm(post = null) {
         showposts();
     });
 }
-function makeFavicon(url, big = false) {
-    // Utiliser l'API de google pour extraire le favicon du site pointé par url
-    // retourne un élément div comportant le favicon en tant qu'image de fond
-    ///////////////////////////////////////////////////////////////////////////
-    /*if (url.slice(-1) != "/") url += "/";*/
-    let faviconClass = "favicon";
-    if (big) faviconClass = "big-favicon";
-    url = "http://www.google.com/s2/favicons?sz=64&domain=" + url;5
-    return `<div class="${faviconClass}" style="background-image: url('${url}');"></div>`;
-}
 function renderpost(post) {
-    let favicon = makeFavicon(post.Url);
     let creationDate = convertToFrenchDate(post.Creation);
-    
     return $(`
      <div class="postRow" id='${post.Id}'>
         <div class="postContainer noselect">
@@ -362,15 +387,11 @@ function renderpost(post) {
                         </div>
                     </div>
                     <div class="postTitle">${post.Title}</div>
-
                     <div class="imagePreview" style="background-image:url('${post.Image}')"></div>
-       
                     <div class="postText hideExtra">${post.Text}</div>
-                    
                     <div class="postDate" style="font-size: 0.85rem; color: #666; margin-top: 8px; font-style: italic;">
                         ${creationDate}
                     </div>
-                    
                     <div class="toggleText" style="text-align:center">
                         <i class="fa-solid fa-chevron-down"></i>
                     </div>
@@ -380,12 +401,11 @@ function renderpost(post) {
     </div>           
     `);
 }
+
 $(document).on('click', '.toggleText', function() {
     let postRow = $(this).closest('.postRow');
     let textDiv = postRow.find('.postText');
-
     textDiv.toggleClass('hideExtra showExtra');
-
     let icon = $(this).find('i');
     icon.toggleClass('fa-chevron-down fa-chevron-up');
 });
@@ -438,4 +458,85 @@ function Local_to_UTC(Local_numeric_date) {
     Local_Date.setHours(Local_Date.getHours() + UTC_Offset);
     let UTC_numeric_date = Local_Date.getTime();
     return UTC_numeric_date;
+}
+function filterPostsByKeywords(posts, searchKeys) {
+    let keywords = searchKeys.split(' ').filter(k => k.trim().length >= minKeywordLength);
+    
+    if (keywords.length === 0) return posts;
+    
+    return posts.filter(post => {
+        let postText = (post.Title + " " + post.Text)
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+        
+        return keywords.every(keyword => {
+            let normalizedKeyword = keyword
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '');
+            return postText.includes(normalizedKeyword);
+        });
+    });
+}
+
+function highlight(text, elem) {
+    text = text.trim().toLowerCase(); // Ajout de toLowerCase() ici
+    if (text.length >= minKeywordLength) { // Correction du nom de la variable
+        var innerHTML = elem.innerHTML;
+        let startIndex = 0;
+        while (startIndex < innerHTML.length) {
+            var normalizedHtml = innerHTML.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // Correction de toLocaleLowerCase
+            var normalizedText = text.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // Normaliser aussi le texte recherché
+            var index = normalizedHtml.indexOf(normalizedText, startIndex); // Utiliser le texte normalisé
+            let highLightedText = "";
+            if (index >= startIndex) {
+                highLightedText = "<span class='highlight'>" + innerHTML.substring(index, index + text.length) + "</span>";
+                innerHTML = innerHTML.substring(0, index) + highLightedText + innerHTML.substring(index + text.length);
+                startIndex = index + highLightedText.length + 1;
+            } else {
+                startIndex = innerHTML.length + 1;
+            }
+        }
+        elem.innerHTML = innerHTML;
+    }
+}
+
+function highlightKeywords() {
+    if (showKeywords && searchKeys !== "") { // Ajout de la vérification searchKeys
+        let keywords = $("#searchKeys").val().split(' ');
+        if (keywords.length > 0) {
+            keywords.forEach(key => {
+                if (key.trim().length >= minKeywordLength) { // Vérifier la longueur minimale
+                    let titles = document.getElementsByClassName('postTitle');
+                    Array.from(titles).forEach(title => {
+                        highlight(key, title);
+                    });
+                    let texts = document.getElementsByClassName('postText');
+                    Array.from(texts).forEach(text => {
+                        highlight(key, text);
+                    });
+                }
+            });
+        }
+    }
+}
+function eraseHighlights() {
+    $('.postTitle, .postText').each(function() {
+        let html = $(this).html();
+        // Remplacer tous les spans de highlight par leur contenu texte
+        html = html.replace(/<span class=['"]highlight['"]>(.*?)<\/span>/gi, '$1');
+        $(this).html(html);
+    });
+}
+function showSearchBar() {
+    $("#searchBar").slideDown(300);
+    $("#searchKeys").focus();
+}
+
+function hideSearchBar() {
+    $("#searchBar").slideUp(300);
+    $("#searchKeys").val("");
+    pageManager.reset();
+    posts_API.resume_Periodic_Refresh();
 }

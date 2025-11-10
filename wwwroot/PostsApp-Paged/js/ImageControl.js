@@ -91,7 +91,8 @@ function initImageUploaders() {
                          class="UploadedImage"
                          style="height:100% max-height:300px; width:auto; max-width:300px; border-radius:4px; margin-bottom: 20px;"
                          src="${imageData}"
-                         title="Cliquez pour sélectionner un fichier, ou cliquer-déposer une image";
+                         alt="Cliquez pour sélectionner un fichier, ou glissez déposez une image"
+                         title="Cliquez pour sélectionner un fichier, ou glissez déposez une image";
                          waitingImage ="${waitingImage}">`);
 
         $(this).append(`<input 
