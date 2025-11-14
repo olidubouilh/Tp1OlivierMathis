@@ -135,7 +135,7 @@ async function compileCategories() {
 async function renderposts(container, queryString) {
     deleteError();
     let endOfData = false;
-    queryString += "&sort=category,title";
+    queryString += "&sort=-creation,title";
     if (selectedCategory != "")
         queryString += "&category=" + selectedCategory;
     
