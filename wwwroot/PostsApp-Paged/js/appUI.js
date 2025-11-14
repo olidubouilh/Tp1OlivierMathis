@@ -8,6 +8,7 @@ let searchKeys = "";
 let showKeywords = true;
 let waiting = null;
 let waitingGifTrigger = 2000;
+const DEFAULT_POST_IMAGE = "../assetsRepository/news-logo.png";
 
 function addWaitingGif() {
     clearTimeout(waiting);
@@ -270,10 +271,11 @@ function newpost() {
     post.Title = "";
     post.Text = "";
     post.Category = "";
-    post.Image = "";
+    post.Image = DEFAULT_POST_IMAGE;
     post.Creation = Math.floor(Date.now() / 1000);
     return post;
 }
+
 function renderpostForm(post = null) {
     hideposts();
     let create = post == null;
@@ -283,11 +285,25 @@ function renderpostForm(post = null) {
     $("#actionTitle").text(create ? "Création" : "Modification");
     $("#postForm").show();
     $("#postForm").empty();
+    let updateDateCheckbox = create ? '' : `
+        <div class="form-check" style="margin-bottom: 15px;">
+            <input 
+                class="form-check-input" 
+                type="checkbox" 
+                id="updateCreationDate" 
+                name="updateCreationDate"
+            />
+            <label class="form-check-label" for="updateCreationDate">
+                Mettre à jour la date de création
+            </label>
+        </div>
+    `;
+    
     $("#postForm").append(`
     <form class="form" id="postFormElement">
         
         <input type="hidden" name="Id" value="${post.Id}"/>
-        <input type="hidden" name="Creation" value="${post.Creation || Date.now()}"/>
+        <input type="hidden" name="Creation" id="CreationField" value="${post.Creation || Date.now()}"/>
 
         <label for="Category" class="form-label">Categorie </label>
             <input 
@@ -329,7 +345,11 @@ function renderpostForm(post = null) {
                  imageSrc='${post.Image}' 
                  waitingImage="Loading_icon.gif">
             </div>
+            
             <hr>
+            
+            ${updateDateCheckbox}
+            
             <input type="submit" value="Enregistrer" id="savepost" class="btn btn-primary">
             <input type="button" value="Annuler" id="cancel" class="btn btn-secondary">
         </form>
@@ -337,10 +357,20 @@ function renderpostForm(post = null) {
     
     initImageUploaders();
     initFormValidation();
+    if (!create) {
+        $('#updateCreationDate').on('change', function() {
+            if ($(this).is(':checked')) {
+                $('#CreationField').val(Math.floor(Date.now() / 1000));
+            } else {
+                $('#CreationField').val(post.Creation);
+            }
+        });
+    }
     
     $('#postFormElement').on("submit", async function (event) {
         event.preventDefault();
         let postData = getFormData($(this));
+        postData.Creation = parseInt(postData.Creation);
         
         addWaitingGif();
         let result = await posts_API.Save(postData, create);
