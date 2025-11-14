@@ -168,17 +168,6 @@ async function renderposts(container, queryString) {
             $(".deleteCmd").on("click", function () {
                 renderDeletepostForm($(this).attr("deletepostId"));
             });
-        } else {
-            endOfData = true;
-            // Afficher un message si aucun résultat
-            if (searchKeys !== "") {
-                container.append($(`
-                    <div style="text-align: center; padding: 40px; color: #666;">
-                        <i class="fa fa-search" style="font-size: 3rem; margin-bottom: 20px;"></i>
-                        <p style="font-size: 1.2rem;">Aucun résultat trouvé pour "${searchKeys}"</p>
-                    </div>
-                `));
-            }
         }
     } else {
         renderError(posts_API.currentHttpError);
@@ -481,14 +470,14 @@ function filterPostsByKeywords(posts, searchKeys) {
 }
 
 function highlight(text, elem) {
-    text = text.trim().toLowerCase(); // Ajout de toLowerCase() ici
-    if (text.length >= minKeywordLength) { // Correction du nom de la variable
+    text = text.trim().toLowerCase();
+    if (text.length >= minKeywordLength) {
         var innerHTML = elem.innerHTML;
         let startIndex = 0;
         while (startIndex < innerHTML.length) {
-            var normalizedHtml = innerHTML.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // Correction de toLocaleLowerCase
-            var normalizedText = text.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // Normaliser aussi le texte recherché
-            var index = normalizedHtml.indexOf(normalizedText, startIndex); // Utiliser le texte normalisé
+            var normalizedHtml = innerHTML.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            var normalizedText = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            var index = normalizedHtml.indexOf(normalizedText, startIndex);
             let highLightedText = "";
             if (index >= startIndex) {
                 highLightedText = "<span class='highlight'>" + innerHTML.substring(index, index + text.length) + "</span>";
@@ -503,11 +492,11 @@ function highlight(text, elem) {
 }
 
 function highlightKeywords() {
-    if (showKeywords && searchKeys !== "") { // Ajout de la vérification searchKeys
+    if (showKeywords && searchKeys !== "") {
         let keywords = $("#searchKeys").val().split(' ');
         if (keywords.length > 0) {
             keywords.forEach(key => {
-                if (key.trim().length >= minKeywordLength) { // Vérifier la longueur minimale
+                if (key.trim().length >= minKeywordLength) {
                     let titles = document.getElementsByClassName('postTitle');
                     Array.from(titles).forEach(title => {
                         highlight(key, title);
@@ -524,7 +513,6 @@ function highlightKeywords() {
 function eraseHighlights() {
     $('.postTitle, .postText').each(function() {
         let html = $(this).html();
-        // Remplacer tous les spans de highlight par leur contenu texte
         html = html.replace(/<span class=['"]highlight['"]>(.*?)<\/span>/gi, '$1');
         $(this).html(html);
     });
